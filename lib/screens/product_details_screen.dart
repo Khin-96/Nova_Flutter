@@ -197,25 +197,31 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   void _showSuccessSnackbar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: Colors.black,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(20),
-        duration: const Duration(seconds: 2),
-        content: Row(
-          children: const [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 10),
-            Text('ADDED TO YOUR BAG', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
-          ],
-        ),
-        action: SnackBarAction(
-          label: 'VIEW BAG',
-          textColor: Colors.white,
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CartScreen())),
-        ),
+    // Create a snackbar that auto-dismisses after 2 seconds and is swipeable
+    final snackBar = SnackBar(
+      backgroundColor: Colors.black,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(20),
+      duration: const Duration(seconds: 2), // Auto-dismiss after 2 seconds
+      content: Row(
+        children: const [
+          Icon(Icons.check_circle, color: Colors.white),
+          SizedBox(width: 10),
+          Text('ADDED TO YOUR BAG', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+        ],
+      ),
+      action: SnackBarAction(
+        label: 'VIEW BAG',
+        textColor: Colors.white,
+        onPressed: () {
+          // Navigate to cart and dismiss snackbar
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const CartScreen()));
+        },
       ),
     );
+
+    // Show the snackbar
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 }
