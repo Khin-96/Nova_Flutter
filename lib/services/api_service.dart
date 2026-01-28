@@ -5,6 +5,16 @@ import '../models/product.dart';
 class ApiService {
   static const String baseUrl = 'https://novawear.onrender.com';
 
+  /// Triggers a light request to the backend to wake it up from sleep (useful for Render/Heroku free tiers)
+  Future<void> warmUpServer() async {
+    try {
+      // Just hit the root or a lightweight endpoint
+      await http.get(Uri.parse('$baseUrl/')).timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Ignore errors during warmup
+    }
+  }
+
   Future<List<Product>> fetchFeaturedProducts() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/api/products/featured'));

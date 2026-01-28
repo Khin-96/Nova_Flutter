@@ -28,4 +28,16 @@ class Product {
       tags: List<String>.from(json['tags'] ?? []),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'name': name,
+      'price': price,
+      'image': image,
+      'category': category,
+      'sizes': sizes,
+      'tags': tags,
+    };
+  }
 }

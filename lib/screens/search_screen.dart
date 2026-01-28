@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:provider/provider.dart';
+import '../providers/product_provider.dart';
 import '../models/product.dart';
-import '../services/api_service.dart';
 import '../widgets/product_card.dart';
 import '../widgets/shimmer_loaders.dart';
 
@@ -14,36 +15,31 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final ApiService _apiService = ApiService();
   List<Product>? _results;
-  bool _isLoading = false;
 
-  void _performSearch(String query) async {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProductProvider>().fetchAllProducts();
+    });
+  }
+
+  void _performSearch(String query) {
     if (query.isEmpty) {
-      setState(() {
-        _results = null;
-        _isLoading = false;
-      });
+      setState(() => _results = null);
       return;
     }
 
-    setState(() => _isLoading = true);
+    final allProducts = context.read<ProductProvider>().allProducts;
+    if (allProducts.isEmpty) return;
+
+    final filtered = allProducts.where((p) => 
+      p.name.toLowerCase().contains(query.toLowerCase()) || 
+      p.category.toLowerCase().contains(query.toLowerCase())
+    ).toList();
     
-    // Simulate/Actual search logic
-    try {
-      final products = await _apiService.fetchProductsByCategory('all');
-      final filtered = products.where((p) => 
-        p.name.toLowerCase().contains(query.toLowerCase()) || 
-        p.category.toLowerCase().contains(query.toLowerCase())
-      ).toList();
-      
-      setState(() {
-        _results = filtered;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
+    setState(() => _results = filtered);
   }
 
   @override
@@ -73,20 +69,24 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
         ],
       ),
-      body: _isLoading 
-        ? GridView.builder(
-            padding: const EdgeInsets.all(20),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.65,
-              crossAxisSpacing: 20,
-              mainAxisSpacing: 20,
-            ),
-            itemCount: 6,
-            itemBuilder: (context, index) => const ProductShimmer(),
-          )
-        : _results == null
-          ? Center(
+      body: Consumer<ProductProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading && provider.allProducts.isEmpty) {
+            return GridView.builder(
+              padding: const EdgeInsets.all(20),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.65,
+                crossAxisSpacing: 20,
+                mainAxisSpacing: 20,
+              ),
+              itemCount: 6,
+              itemBuilder: (context, index) => const ProductShimmer(),
+            );
+          }
+
+          if (_results == null) {
+            return Center(
               child: FadeInDown(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -104,27 +104,33 @@ class _SearchScreenState extends State<SearchScreen> {
                   ],
                 ),
               ),
-            )
-          : _results!.isEmpty
-            ? const Center(
-                child: Text(
-                  'NO PRODUCTS FOUND',
-                  style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5),
-                ),
-              )
-            : GridView.builder(
-                padding: const EdgeInsets.all(20),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.65,
-                  crossAxisSpacing: 20,
-                  mainAxisSpacing: 20,
-                ),
-                itemCount: _results!.length,
-                itemBuilder: (context, index) {
-                  return ProductCard(product: _results![index], index: index);
-                },
+            );
+          }
+
+          if (_results!.isEmpty) {
+            return const Center(
+              child: Text(
+                'NO PRODUCTS FOUND',
+                style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5),
               ),
+            );
+          }
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(20),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.65,
+              crossAxisSpacing: 20,
+              mainAxisSpacing: 20,
+            ),
+            itemCount: _results!.length,
+            itemBuilder: (context, index) {
+              return ProductCard(product: _results![index], index: index);
+            },
+          );
+        },
+      ),
     );
   }
 }

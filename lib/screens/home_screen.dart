@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
 import '../providers/cart_provider.dart';
+import '../providers/product_provider.dart';
 import '../widgets/product_card.dart';
 import '../widgets/shimmer_loaders.dart';
 import 'cart_screen.dart';
@@ -22,14 +23,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ApiService _apiService = ApiService();
-  late Future<List<Product>> _featuredProductsFuture;
   late VideoPlayerController _videoController;
 
   @override
   void initState() {
     super.initState();
-    _featuredProductsFuture = _apiService.fetchFeaturedProducts();
+    // Start fetching (mostly just an extra check, Splash should have started it)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProductProvider>().fetchFeaturedProducts();
+    });
     _videoController = VideoPlayerController.asset('Video/Hero_video.mp4')
       ..initialize().then((_) {
         setState(() {});
@@ -68,9 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         color: Colors.black,
         onRefresh: () async {
-          setState(() {
-            _featuredProductsFuture = _apiService.fetchFeaturedProducts();
-          });
+          await context.read<ProductProvider>().fetchFeaturedProducts(forceRefresh: true);
         },
         child: SingleChildScrollView(
           child: Column(
@@ -275,10 +275,9 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           const Text('NEW ARRIVALS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: 1)),
           const SizedBox(height: 25),
-          FutureBuilder<List<Product>>(
-            future: _featuredProductsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+          Consumer<ProductProvider>(
+            builder: (context, provider, child) {
+              if (provider.isLoading && provider.featuredProducts.isEmpty) {
                 return GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -292,7 +291,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemBuilder: (context, index) => const ProductShimmer(),
                 );
               }
-              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+              
+              if (provider.featuredProducts.isEmpty) {
                 return const Center(child: Text('NO PRODUCTS AVAILABLE', style: TextStyle(fontWeight: FontWeight.bold)));
               }
 
@@ -305,9 +305,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisSpacing: 20,
                   mainAxisSpacing: 20,
                 ),
-                itemCount: snapshot.data!.length,
+                itemCount: provider.featuredProducts.length,
                 itemBuilder: (context, index) {
-                  return ProductCard(product: snapshot.data![index], index: index);
+                  return ProductCard(product: provider.featuredProducts[index], index: index);
                 },
               );
             },
